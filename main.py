@@ -15,6 +15,14 @@ RATE = 44100
 
 info = pa.get_host_api_info_by_index(0)
 
+p = pyaudio.PyAudio()
+info = p.get_host_api_info_by_index(0)
+num_devices = info.get('deviceCount')
+
+for i in range(0, num_devices):
+    if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+        print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+
 stream = pa.open(format=FORMAT,
                  channels=CHANNELS,
                  rate=RATE,
@@ -22,13 +30,20 @@ stream = pa.open(format=FORMAT,
                  input_device_index=1,
                  frames_per_buffer=CHUNK)
 
+velocity_threshold = 30
+recording_minimum_length = 1
+recording_length_in_seconds_of_silence_to_finish_recording = 5
 
-def get_recording_frames():
+
+def listen_for_speech():
     numerator, denominator = spl.A_weighting(RATE)
-    all_frames = []
-    selected_frames = []
 
-    while_start_timestamp = time.perf_counter()
+    frames = []
+
+    recording_start_timestamp = None
+    speech_start_timestamp = None
+    silence_start_timestamp = None
+
     while True:
         try:
             block = stream.read(CHUNK, exception_on_overflow=False)
@@ -40,15 +55,38 @@ def get_recording_frames():
             # This is where you apply A-weighted filter
             y = lfilter(numerator, denominator, decoded_block)
             new_decibel = 20 * numpy.log10(spl.rms_flat(y))
-            print(new_decibel)
+            # print(new_decibel)
 
-            all_frames.append(block)
-            if new_decibel > 38:
-                selected_frames.append(block)
+            current_timestamp = time.perf_counter()
 
-            if time.perf_counter() - while_start_timestamp > 10:
-                break
-    return [all_frames, selected_frames]
+            if recording_start_timestamp is not None:
+                frames.append(block)
+
+            if new_decibel > velocity_threshold:
+                # first speech - recording start
+                if recording_start_timestamp is None:
+                    recording_start_timestamp = time.perf_counter()
+
+                if speech_start_timestamp is None:
+                    print("speech")
+                    silence_start_timestamp = None
+                    speech_start_timestamp = time.perf_counter()
+            else:
+                if silence_start_timestamp is None and recording_start_timestamp is not None:
+                    print("silence")
+                    speech_start_timestamp = None
+                    silence_start_timestamp = time.perf_counter()
+
+                # checks if there's silence *AND* checks if the recording had 5 seconds of silence from last input
+                if silence_start_timestamp is not None and current_timestamp - silence_start_timestamp > recording_length_in_seconds_of_silence_to_finish_recording:
+                    print("recording length:", silence_start_timestamp - recording_start_timestamp)
+                    #  checks if the whole recording is more than 5 minutes length
+                    if silence_start_timestamp - recording_start_timestamp > recording_minimum_length:
+                        return frames
+                    # if recording is less than 5 seconds length it will not save it and will listen for another one
+                    else:
+                        print("recording isn't long enough")
+                        return None
 
 
 def write_file(filename, frames, channels, sample_size, frame_rate):
@@ -60,10 +98,8 @@ def write_file(filename, frames, channels, sample_size, frame_rate):
     wf.close()
 
 
-all_frames, selected_frames = get_recording_frames()
-
-write_file(filename="recordings/all_frames.wav", frames=all_frames, channels=1, sample_size=pa.get_sample_size(FORMAT), frame_rate=44100)
-write_file(filename="recordings/selected_frames.wav", frames=selected_frames, channels=1, sample_size=pa.get_sample_size(FORMAT), frame_rate=44100)
+recording_frames_result = listen_for_speech()
+write_file(filename="recordings/separated_voice.wav", frames=recording_frames_result, channels=1, sample_size=pa.get_sample_size(FORMAT), frame_rate=44100)
 
 stream.stop_stream()
 stream.close()
