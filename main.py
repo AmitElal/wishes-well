@@ -6,22 +6,14 @@ import wave
 import time
 
 
+# PyAudio variables
 pa = pyaudio.PyAudio()
 
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
+SAMPLE_SIZE = pa.get_sample_size(FORMAT)
 RATE = 44100
-
-info = pa.get_host_api_info_by_index(0)
-
-p = pyaudio.PyAudio()
-info = p.get_host_api_info_by_index(0)
-num_devices = info.get('deviceCount')
-
-for i in range(0, num_devices):
-    if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
-        print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
 
 stream = pa.open(format=FORMAT,
                  channels=CHANNELS,
@@ -30,9 +22,13 @@ stream = pa.open(format=FORMAT,
                  input_device_index=1,
                  frames_per_buffer=CHUNK)
 
-velocity_threshold = 30
+# general variables
+wish_id_count = 1
+
+# sound detection parameter variables
+velocity_threshold = 35
 recording_minimum_length = 1
-recording_length_in_seconds_of_silence_to_finish_recording = 5
+recording_length_in_seconds_of_silence_to_finish_recording = 3
 
 
 def listen_for_speech():
@@ -86,20 +82,50 @@ def listen_for_speech():
                     # if recording is less than 5 seconds length it will not save it and will listen for another one
                     else:
                         print("recording isn't long enough")
-                        return None
+                        frames = []
+                        recording_start_timestamp = None
+                        speech_start_timestamp = None
+                        silence_start_timestamp = None
 
 
-def write_file(filename, frames, channels, sample_size, frame_rate):
-    wf = wave.open(filename, 'wb')
-    wf.setnchannels(channels)
-    wf.setsampwidth(sample_size)
-    wf.setframerate(frame_rate)
+
+def print_input_devices():
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    num_devices = info.get('deviceCount')
+
+    for i in range(0, num_devices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+
+
+def generate_filename():
+    global wish_id_count
+
+    directory = "recordings/"
+    filename_prefix = "wish_"
+    wish_id = wish_id_count
+    file_extension = ".wav"
+    filename = directory + filename_prefix + str(wish_id) + file_extension
+
+    wish_id_count = wish_id_count + 1
+
+    return filename
+
+
+def write_file(frames):
+    wf = wave.open(generate_filename(), 'wb')
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(SAMPLE_SIZE)
+    wf.setframerate(RATE)
     wf.writeframes(b''.join(frames))
     wf.close()
 
 
-recording_frames_result = listen_for_speech()
-write_file(filename="recordings/separated_voice.wav", frames=recording_frames_result, channels=1, sample_size=pa.get_sample_size(FORMAT), frame_rate=44100)
+# print_input_devices()
+
+while True:
+    write_file(listen_for_speech())
 
 stream.stop_stream()
 stream.close()
