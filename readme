@@ -1,0 +1,4 @@
+Configurations needed to be set up on new hardware:
+1. input_stream - input_device_index argument (input selection)
+2. velocity_threshold variable (according to mic volume)
+3. directory variable in play_insult function(wishes insults directory)

@@ -1,9 +1,14 @@
-import pyaudio
-from scipy.signal import lfilter
-import spl_lib as spl
-import numpy
-import wave
+import os
+import random
 import time
+import wave
+
+import numpy
+import pyaudio
+from playsound import playsound
+from scipy.signal import lfilter
+
+import spl_lib as spl
 
 
 # PyAudio variables
@@ -15,12 +20,12 @@ CHANNELS = 1
 SAMPLE_SIZE = pa.get_sample_size(FORMAT)
 RATE = 44100
 
-stream = pa.open(format=FORMAT,
-                 channels=CHANNELS,
-                 rate=RATE,
-                 input=True,
-                 input_device_index=1,
-                 frames_per_buffer=CHUNK)
+input_stream = pa.open(format=FORMAT,
+                       channels=CHANNELS,
+                       rate=RATE,
+                       input=True,
+                       input_device_index=1,
+                       frames_per_buffer=CHUNK)
 
 # general variables
 wish_id_count = 1
@@ -28,7 +33,15 @@ wish_id_count = 1
 # sound detection parameter variables
 velocity_threshold = 35
 recording_minimum_length = 1
-recording_length_in_seconds_of_silence_to_finish_recording = 3
+recording_length_in_seconds_of_silence_to_finish_recording = 2
+
+
+def play_insult():
+    directory = "C://Users/Amit/PycharmProjects/well_of_wishes/wishes_insults"
+    # gets random file from selected directory
+    file = random.choice(os.listdir(directory))
+    file_to_play = "wishes_insults/" + str(file)
+    playsound(file_to_play)
 
 
 def listen_for_speech():
@@ -42,7 +55,7 @@ def listen_for_speech():
 
     while True:
         try:
-            block = stream.read(CHUNK, exception_on_overflow=False)
+            block = input_stream.read(CHUNK, exception_on_overflow=False)
         except IOError as e:
             print(" (%d) Error recording: %s" % e)
         else:
@@ -78,6 +91,7 @@ def listen_for_speech():
                     print("recording length:", silence_start_timestamp - recording_start_timestamp)
                     #  checks if the whole recording is more than 5 minutes length
                     if silence_start_timestamp - recording_start_timestamp > recording_minimum_length:
+                        play_insult()
                         return frames
                     # if recording is less than 5 seconds length it will not save it and will listen for another one
                     else:
@@ -127,6 +141,6 @@ def write_file(frames):
 while True:
     write_file(listen_for_speech())
 
-stream.stop_stream()
-stream.close()
+input_stream.stop_stream()
+input_stream.close()
 pa.terminate()
