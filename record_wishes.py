@@ -24,14 +24,14 @@ input_stream = pa.open(format=FORMAT,
                        channels=CHANNELS,
                        rate=RATE,
                        input=True,
-                       input_device_index=1,
+                       input_device_index=0,
                        frames_per_buffer=CHUNK)
 
 # general variables
 wish_id_count = 1
 
 # sound detection parameter variables
-velocity_threshold = 35
+velocity_threshold = 38
 recording_minimum_length = 1
 recording_length_in_seconds_of_silence_to_finish_recording = 2
 
@@ -102,7 +102,6 @@ def listen_for_speech():
                         silence_start_timestamp = None
 
 
-
 def print_input_devices():
     p = pyaudio.PyAudio()
     info = p.get_host_api_info_by_index(0)
@@ -116,11 +115,14 @@ def print_input_devices():
 def generate_filename():
     global wish_id_count
 
-    directory = "recordings/"
+    directory = "wishes_recordings/"
     filename_prefix = "wish_"
     wish_id = wish_id_count
     file_extension = ".wav"
+
     filename = directory + filename_prefix + str(wish_id) + file_extension
+
+    print(filename)
 
     wish_id_count = wish_id_count + 1
 
@@ -136,7 +138,8 @@ def write_file(frames):
     wf.close()
 
 
-# print_input_devices()
+print_input_devices()
+
 
 while True:
     write_file(listen_for_speech())
