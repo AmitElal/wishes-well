@@ -11,6 +11,19 @@ pa = pyaudio.PyAudio()
 
 CHUNK = 1024
 
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+SAMPLE_SIZE = pa.get_sample_size(FORMAT)
+SAMPLE_WIDTH = 2
+RATE = 44100
+
+stream = pa.open(format=pa.get_format_from_width(SAMPLE_WIDTH),
+                 channels=CHANNELS,
+                 rate=RATE,
+                 output=True,
+                 output_device_index=4)
+
 
 def play_insult():
     directory = "C://Users/Amit/PycharmProjects/wishes-well/wishes_recordings"
@@ -20,21 +33,11 @@ def play_insult():
 
     wf = wave.open(file_to_play)
 
-    stream = pa.open(format=pa.get_format_from_width(wf.getsampwidth()),
-                     channels=wf.getnchannels(),
-                     rate=wf.getframerate(),
-                     output=True,
-                     output_device_index=4)
-
     data = wf.readframes(CHUNK)
 
     while len(data):
         stream.write(data)
         data = wf.readframes(CHUNK)
-
-    stream.stop_stream()
-    stream.close()
-
 
 
 def print_input_devices():
@@ -48,8 +51,11 @@ def print_input_devices():
 
 
 print_input_devices()
+
 while True:
     play_insult()
 
+stream.stop_stream()
+stream.close()
 pa.terminate()
 
