@@ -31,13 +31,13 @@ input_stream = pa.open(format=FORMAT,
 wish_id_count = 1
 
 # sound detection parameter variables
-velocity_threshold = 38
+velocity_threshold = 80
 recording_minimum_length = 1
 recording_length_in_seconds_of_silence_to_finish_recording = 2
 
 
 def play_insult():
-    directory = "C://Users/Amit/PycharmProjects/well_of_wishes/wishes_insults"
+    directory = "C://Users/Amit/PycharmProjects/wishes-well/wishes_insults"
     # gets random file from selected directory
     file = random.choice(os.listdir(directory))
     file_to_play = "wishes_insults/" + str(file)
