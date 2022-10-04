@@ -5,11 +5,9 @@ import wave
 
 import numpy
 import pyaudio
-from playsound import playsound
 from scipy.signal import lfilter
 
 import spl_lib as spl
-
 
 # PyAudio variables
 pa = pyaudio.PyAudio()
@@ -18,14 +16,21 @@ CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 SAMPLE_SIZE = pa.get_sample_size(FORMAT)
+SAMPLE_WIDTH = 2
 RATE = 44100
 
 input_stream = pa.open(format=FORMAT,
                        channels=CHANNELS,
                        rate=RATE,
                        input=True,
-                       input_device_index=0,
+                       input_device_index=1,
                        frames_per_buffer=CHUNK)
+
+output_stream = pa.open(format=pa.get_format_from_width(SAMPLE_WIDTH),
+                        channels=CHANNELS,
+                        rate=RATE,
+                        output=True,
+                        output_device_index=2)
 
 # general variables
 wish_id_count = 1
@@ -41,7 +46,14 @@ def play_insult():
     # gets random file from selected directory
     file = random.choice(os.listdir(directory))
     file_to_play = "wishes_insults/" + str(file)
-    playsound(file_to_play)
+
+    wf = wave.open(file_to_play)
+
+    data = wf.readframes(CHUNK)
+
+    while len(data):
+        output_stream.write(data)
+        data = wf.readframes(CHUNK)
 
 
 def listen_for_speech():
@@ -139,7 +151,6 @@ def write_file(frames):
 
 
 print_input_devices()
-
 
 while True:
     write_file(listen_for_speech())
