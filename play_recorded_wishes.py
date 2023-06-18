@@ -5,18 +5,20 @@ import pyaudio
 import wave
 import sys
 
+
+print("play_recorded_wishes")
 # need to implement:
 # add voice changer to wishes for burners privacy
 pa = pyaudio.PyAudio()
-
-CHUNK = 1024
 
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 SAMPLE_SIZE = pa.get_sample_size(FORMAT)
 SAMPLE_WIDTH = 2
-RATE = 44100
+RATE = 48000
+
+target_output = 0 
 
 def print_input_devices():
     p = pyaudio.PyAudio()
@@ -25,7 +27,11 @@ def print_input_devices():
 
     for i in range(0, num_devices):
         if (p.get_device_info_by_host_api_device_index(0, i).get('maxOutputChannels')) > 0:
-            print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+            print(i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+            if "bcm2835 Headphones" in p.get_device_info_by_host_api_device_index(0, i).get('name') :
+               global target_output
+               target_output = i
+               print (i)
 
 
 print_input_devices()
@@ -34,14 +40,15 @@ stream = pa.open(format=pa.get_format_from_width(SAMPLE_WIDTH),
                  channels=CHANNELS,
                  rate=RATE,
                  output=True,
-                 output_device_index=5)
+                 output_device_index=target_output)
 
 
 def play_insult():
-    directory = "C://Users/Amit/PycharmProjects/wishes-well/wishes_recordings"
+    
+    directory = "/home/amit/Documents/TheWishesWell/wishes_recordings/"
     # gets random file from selected directory
     file = random.choice(os.listdir(directory))
-    file_to_play = "wishes_recordings/" + str(file)
+    file_to_play = directory + str(file)
 
     wf = wave.open(file_to_play)
 
@@ -55,9 +62,15 @@ def play_insult():
 print_input_devices()
 
 while True:
-    play_insult()
+    try:
+        play_insult()
+    except:
+        print("exception getting a wish")
+    else:
+        continue
 
 stream.stop_stream()
 stream.close()
 pa.terminate()
 
+ 

@@ -9,6 +9,20 @@ from scipy.signal import lfilter
 
 import spl_lib as spl
 
+import uuid
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# fix mic volume 
+# run two files together and check theyre working
+#
+#
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+print("record_wishes")
 # PyAudio variables
 pa = pyaudio.PyAudio()
 
@@ -17,35 +31,77 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 SAMPLE_SIZE = pa.get_sample_size(FORMAT)
 SAMPLE_WIDTH = 2
-RATE = 44100
+RATE = 48000
+RATE2 = 44100
+
+target_input = 0
+target_output = 0
+
+
+def print_output_devices():
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    num_devices = info.get('deviceCount')
+
+    for i in range(0, num_devices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxOutputChannels')) > 0:
+            print(i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+            if "TX USB Audio" in p.get_device_info_by_host_api_device_index(0, i).get('name') :
+               global target_output
+               target_output = i
+               print (i)
+            
+            
+def print_input_devices():
+    
+    
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    num_devices = info.get('deviceCount')
+
+    for i in range(0, num_devices):
+        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+            print(i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+            if "TONOR TC-777 Audio Device" in p.get_device_info_by_host_api_device_index(0, i).get('name') :
+               global target_input
+               target_input = i
+               print (i)
+            
+print_input_devices()
+print_output_devices()
+
+
+
+
 
 input_stream = pa.open(format=FORMAT,
                        channels=CHANNELS,
                        rate=RATE,
                        input=True,
-                       input_device_index=1,
+                       input_device_index=target_input,
                        frames_per_buffer=CHUNK)
+
 
 output_stream = pa.open(format=pa.get_format_from_width(SAMPLE_WIDTH),
                         channels=CHANNELS,
                         rate=RATE,
-                        output=True,
-                        output_device_index=2)
+                        output=True, 
+                        output_device_index=target_output)
 
 # general variables
 wish_id_count = 1
 
 # sound detection parameter variables
-velocity_threshold = 80
+velocity_threshold = 60
 recording_minimum_length = 1
 recording_length_in_seconds_of_silence_to_finish_recording = 2
 
 
 def play_insult():
-    directory = "C://Users/Amit/PycharmProjects/wishes-well/wishes_insults"
+    directory = "/home/amit/Documents/TheWishesWell/wishes_insults/"
     # gets random file from selected directory
     file = random.choice(os.listdir(directory))
-    file_to_play = "wishes_insults/" + str(file)
+    file_to_play = directory + str(file)
 
     wf = wave.open(file_to_play)
 
@@ -76,7 +132,7 @@ def listen_for_speech():
             # This is where you apply A-weighted filter
             y = lfilter(numerator, denominator, decoded_block)
             new_decibel = 20 * numpy.log10(spl.rms_flat(y))
-            # print(new_decibel)
+            print(new_decibel)
 
             current_timestamp = time.perf_counter()
 
@@ -114,25 +170,18 @@ def listen_for_speech():
                         silence_start_timestamp = None
 
 
-def print_input_devices():
-    p = pyaudio.PyAudio()
-    info = p.get_host_api_info_by_index(0)
-    num_devices = info.get('deviceCount')
-
-    for i in range(0, num_devices):
-        if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
-            print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
-
-
 def generate_filename():
     global wish_id_count
 
-    directory = "wishes_recordings/"
+    directory = "/home/amit/Documents/TheWishesWell/wishes_recordings/"
     filename_prefix = "wish_"
-    wish_id = wish_id_count
+    
+    long_string = str(uuid.uuid4().hex)
+    first_ten_of_string = long_string[0:6]
+    
     file_extension = ".wav"
 
-    filename = directory + filename_prefix + str(wish_id) + file_extension
+    filename = directory + filename_prefix + first_ten_of_string + file_extension
 
     print(filename)
 
@@ -142,15 +191,17 @@ def generate_filename():
 
 
 def write_file(frames):
-    wf = wave.open(generate_filename(), 'wb')
-    wf.setnchannels(CHANNELS)
-    wf.setsampwidth(SAMPLE_SIZE)
-    wf.setframerate(RATE)
-    wf.writeframes(b''.join(frames))
-    wf.close()
+    try:
+        wf = wave.open(generate_filename(), 'wb')
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(SAMPLE_SIZE)
+        wf.setframerate(RATE)
+        wf.writeframes(b''.join(frames))
+        wf.close()
+    except:
+        print("exception!!!")
 
 
-print_input_devices()
 
 while True:
     write_file(listen_for_speech())
@@ -158,3 +209,4 @@ while True:
 input_stream.stop_stream()
 input_stream.close()
 pa.terminate()
+11
